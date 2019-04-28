@@ -15,6 +15,7 @@
 0013-listen.patch
 0014-ssl-cert.patch
 0015-disable-clone-newpid.patch
+0016-allow-anon-upload-on-writeable-root.patch
 0030-kfreebsd.patch
 #0035-address_space_limit.patch
 0040-disable-anonymous.patch
