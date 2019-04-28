@@ -1,3 +1,9 @@
+vsftpd (3.0.3-12+mentors1) unstable; urgency=medium
+
+  * Patch to allow anonymous upload on writeable root
+
+ -- Baptiste BEAUPLAT <lyknode@cilg.org>  Sun, 28 Apr 2019 12:06:37 +0200
+
 vsftpd (3.0.3-12) unstable; urgency=low
 
   [Ryan Chu]
