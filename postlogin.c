@@ -49,6 +49,7 @@ static void handle_size(struct vsf_session* p_sess);
 static void handle_site(struct vsf_session* p_sess);
 static void handle_appe(struct vsf_session* p_sess);
 static void handle_mdtm(struct vsf_session* p_sess);
+static void handle_mfmt(struct vsf_session* p_sess);
 static void handle_site_chmod(struct vsf_session* p_sess,
                               struct mystr* p_arg_str);
 static void handle_site_umask(struct vsf_session* p_sess,
@@ -318,6 +319,10 @@ process_post_login(struct vsf_session* p_sess)
     else if (str_equal_text(&p_sess->ftp_cmd_str, "MDTM"))
     {
       handle_mdtm(p_sess);
+    }
+    else if (str_equal_text(&p_sess->ftp_cmd_str, "MFMT"))
+    {
+      handle_mfmt(p_sess);
     }
     else if (tunable_port_enable &&
              str_equal_text(&p_sess->ftp_cmd_str, "EPRT"))
@@ -1670,6 +1675,79 @@ handle_mdtm(struct vsf_session* p_sess)
                      vsf_sysutil_statbuf_get_numeric_date(
                        s_p_statbuf, tunable_use_localtime));
       vsf_cmdio_write_str(p_sess, FTP_MDTMOK, &s_mdtm_res_str);
+    }
+  }
+}
+
+static void
+handle_mfmt(struct vsf_session* p_sess)
+{
+  static struct mystr s_filename_str;
+  static struct vsf_sysutil_statbuf* s_p_statbuf;
+  int do_write = 0;
+  long modtime = 0;
+  struct str_locate_result loc = str_locate_char(&p_sess->ftp_arg_str, ' ');
+  int retval = str_stat(&p_sess->ftp_arg_str, &s_p_statbuf);
+  if (retval != 0 && loc.found &&
+      vsf_sysutil_isdigit(str_get_char_at(&p_sess->ftp_arg_str, 0)))
+  {
+    if (loc.index == 8 || loc.index == 14 ||
+        (loc.index > 15 && str_get_char_at(&p_sess->ftp_arg_str, 14) == '.'))
+    {
+      do_write = 1;
+    }
+  }
+  if (do_write != 0)
+  {
+    str_split_char(&p_sess->ftp_arg_str, &s_filename_str, ' ');
+    modtime = vsf_sysutil_parse_time(str_getbuf(&p_sess->ftp_arg_str));
+    str_copy(&p_sess->ftp_arg_str, &s_filename_str);
+  }
+  resolve_tilde(&p_sess->ftp_arg_str, p_sess);
+  if (!vsf_access_check_file(&p_sess->ftp_arg_str))
+  {
+    vsf_cmdio_write(p_sess, FTP_NOPERM, "Permission denied.");
+    return;
+  }
+  if (do_write && tunable_write_enable &&
+      (tunable_anon_other_write_enable || !p_sess->is_anonymous))
+  {
+    retval = str_stat(&p_sess->ftp_arg_str, &s_p_statbuf);
+    if (retval != 0 || !vsf_sysutil_statbuf_is_regfile(s_p_statbuf))
+    {
+      vsf_cmdio_write(p_sess, FTP_FILEFAIL,
+                      "Could not set file modification time.");
+    }
+    else
+    {
+      retval = vsf_sysutil_setmodtime(
+        str_getbuf(&p_sess->ftp_arg_str), modtime, tunable_use_localtime);
+      if (retval != 0)
+      {
+        vsf_cmdio_write(p_sess, FTP_FILEFAIL,
+                        "Could not set file modification time.");
+      }
+      else
+      {
+        vsf_cmdio_write(p_sess, FTP_MFMTOK,
+                        "File modification time set.");
+      }
+    }
+  }
+  else
+  {
+    if (retval != 0 || !vsf_sysutil_statbuf_is_regfile(s_p_statbuf))
+    {
+      vsf_cmdio_write(p_sess, FTP_FILEFAIL,
+                      "Could not get file modification time.");
+    }
+    else
+    {
+      static struct mystr s_mdtm_res_str;
+      str_alloc_text(&s_mdtm_res_str,
+                     vsf_sysutil_statbuf_get_numeric_date(
+                       s_p_statbuf, tunable_use_localtime));
+      vsf_cmdio_write_str(p_sess, FTP_MFMTOK, &s_mdtm_res_str);
     }
   }
 }

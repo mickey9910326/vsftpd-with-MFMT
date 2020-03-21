@@ -20,6 +20,7 @@
 #define FTP_STATOK            211
 #define FTP_SIZEOK            213
 #define FTP_MDTMOK            213
+#define FTP_MFMTOK            213
 #define FTP_STATFILE_OK       213
 #define FTP_SITEHELP          214
 #define FTP_HELP              214
